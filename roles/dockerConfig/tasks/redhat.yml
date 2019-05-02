@@ -1,0 +1,28 @@
+---
+- name: install Docker
+  yum:
+    name: "{{ packages }}"
+    update_cache: yes
+    state: present
+  vars:
+    packages:
+    - docker
+
+- name: Setup log maximums
+  lineinfile:
+    dest: /etc/sysconfig/docker
+    backup: true
+    regexp: '^OPTIONS='
+    line: "OPTIONS='--selinux-enabled=false --log-driver=json-file --signature-verification=false --log-opt max-size=1M --log-opt max-file=3'"
+
+- name: Enable the docker service
+  systemd:
+    name: docker
+    enabled: yes
+    masked: no
+    state: started
+
+- name: Restart docker
+  systemd:
+    state: restarted
+    name: docker

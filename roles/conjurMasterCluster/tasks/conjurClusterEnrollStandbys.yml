@@ -1,0 +1,6 @@
+--- # Tasks to finish configuring Conjur etc cluster settings for failover
+
+- name: Enroll Standbys in HA cluster
+  shell: | 
+    docker exec {{ conjur_standby1_container_name }} evoke cluster enroll --cluster-machine-name {{ conjur_standby1_container_name }} {{ conjur_cluster_name }}
+    docker exec {{ conjur_standby2_container_name }} evoke cluster enroll --cluster-machine-name {{ conjur_standby2_container_name }} {{ conjur_cluster_name }}

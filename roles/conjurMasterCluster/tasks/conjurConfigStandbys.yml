@@ -1,0 +1,23 @@
+--- # Tasks for configuring Conjur standby nodes
+
+- name: Transfer seed info to standby1
+  shell: |
+    docker exec {{ conjur_master_container_name }} evoke seed standby {{ conjur_standby1_container_name }} | \
+      docker exec -i {{ conjur_standby1_container_name }} evoke unpack seed - 
+
+- name: Configure Conjur standby1
+  shell: |
+    docker exec {{ conjur_standby1_container_name }} evoke configure standby
+
+- name: Transfer seed info to standby2
+  shell: |
+    docker exec {{ conjur_master_container_name }} evoke seed standby {{ conjur_standby2_container_name }} | \
+      docker exec -i {{ conjur_standby2_container_name }} evoke unpack seed -
+
+- name: Configure Conjur standby2
+  shell: |
+    docker exec {{ conjur_standby2_container_name }} evoke configure standby
+
+- name: Start synchronous replication
+  shell: |
+    docker exec {{ conjur_master_container_name }} evoke replication sync

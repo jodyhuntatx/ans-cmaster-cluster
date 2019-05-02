@@ -1,0 +1,21 @@
+---
+# waits until all replication lag on the master is zero
+- hosts: conjurMaster
+  gather_facts: false
+  tasks:
+  - name: Timestamp
+    debug: msg="{{ lookup('pipe','date +%H:%M:%S') }}"
+
+  - name: Waiting until replication lag is zero for all standbys
+    script: check_replication.sh
+    register: output
+    until: output.stdout == ""
+    retries: 500
+    delay: 30
+    ignore_errors: yes
+
+  - name: Timestamp
+    debug:
+      msg:
+        - "{{ lookup('pipe','date +%H:%M:%S') }}"
+        - "Replication lag is zero for all standbys."

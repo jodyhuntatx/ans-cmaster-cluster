@@ -1,0 +1,36 @@
+---
+- name: Remove old versions of docker
+  apt:
+    name: "{{ packages }}"
+    state: absent
+  vars:
+    packages:
+    - docker
+    - docker-engine
+    - docker.io
+
+- name: Add docker GPG key
+  apt_key:
+    url: https://download.docker.com/linux/debian/gpg
+    id: 9DC858229FC7DD38854AE2D88D81803C0EBFCD88
+    state: present
+
+- name: Add docker repo
+  apt_repository:
+    repo: "{{ docker_apt_repository }}"
+    state: present
+    update_cache: yes
+
+- name: Install docker
+  apt:
+    name: "{{ docker_package }}"
+    state: latest
+
+- name: Install docker for python
+  pip:
+    name: "{{ packages }}"
+    state: latest
+    extra_args: --ignore-installed
+  vars:
+    packages:
+    - docker

@@ -1,0 +1,22 @@
+---
+- hosts: conjurMaster
+  tasks:
+
+  - name: Get RH account vars for initializing subscriptions on RHEL7
+    set_fact:
+      rhel_sub_account: "{{ lookup('env', 'RHEL_SUB_ACCOUNT') }}"
+      rhel_sub_password: "{{ lookup('env', 'RHEL_SUB_PASSWORD') }}"
+      rhel_sub_pool_id: "{{ lookup('env', 'RHEL_SUB_POOL_ID') }}"
+    when: initialize_rh_subscriptions
+
+  - include_role:
+      name: machinePrep
+    when: machine_prep
+
+  - include_role:
+      name: dockerConfig
+    when: docker_config
+
+  - include_tasks: conjurDestroy.yml
+  - include_role:
+      name: conjurMasterCluster

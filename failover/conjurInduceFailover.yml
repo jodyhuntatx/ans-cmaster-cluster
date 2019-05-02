@@ -1,0 +1,54 @@
+---
+# pause_seconds passed from command line as extra vars
+- hosts: conjurMaster
+  gather_facts: false
+  tasks:
+  - name: Find master
+    shell: |
+      cont_list=$(docker ps -f "label=role=conjur_node" \
+                                    --format "{{ '{{' }}.Names {{ '}}' }}")
+      for i in $cont_list; do
+        if [[ $(docker exec $i curl -sk http://localhost/health \
+                                 | jq -Mr .cluster.ok) == "true" ]]; then
+          if [[ $(docker exec $i evoke role) == master ]]; then
+            echo -n $i
+            exit 0
+          fi
+        fi
+      done
+    register: output
+
+  - set_fact:
+      current_master: "{{ output.stdout }}"
+  - debug: msg="Pausing {{ current_master }} for {{ pause_seconds }} seconds."
+
+  - shell: |
+      echo -n "Conjur Master appliance version: "
+      docker exec "{{ current_master }}" cat /opt/conjur/etc/VERSION
+    register: output
+  - debug: var=output.stdout_lines
+
+  - name: Timestamp
+    debug: msg="{{ lookup('pipe','date +%H:%M:%S') }}"
+
+  - name: Pause master
+    shell: docker pause "{{ current_master }}"
+
+  - pause:
+      seconds: "{{ pause_seconds }}"
+
+  - name: Unpause master
+    shell: docker unpause "{{ current_master }}"
+
+  - name: Timestamp
+    debug: msg="{{ lookup('pipe','date +%H:%M:%S') }}"
+
+  - name: Check cluster
+    script: check_cluster.sh
+    register: output
+  - debug: var=output.stdout_lines
+
+  - name: Find new master & cluster leader
+    script: find_master.sh
+    register: output
+  - debug: var=output.stdout_lines

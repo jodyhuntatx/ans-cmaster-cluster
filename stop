@@ -1,0 +1,2 @@
+#!/bin/bash
+docker stop ansible >& /dev/null && docker rm ansible >& /dev/null &

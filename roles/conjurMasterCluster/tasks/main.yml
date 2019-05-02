@@ -1,0 +1,22 @@
+---
+- name: Begin Conjur installation
+  debug: msg="{{ lookup('pipe','date +%H:%M:%S') }}"
+- include_tasks: conjurMaster.yml
+- debug: msg="{{ lookup('pipe','date +%H:%M:%S') }}"
+- include_tasks: conjurStartStandbys.yml
+- debug: msg="{{ lookup('pipe','date +%H:%M:%S') }}"
+- include_tasks: conjurSetupNetwork.yml
+- debug: msg="{{ lookup('pipe','date +%H:%M:%S') }}"
+- include_tasks: conjurHAProxy.yml
+- debug: msg="{{ lookup('pipe','date +%H:%M:%S') }}"
+- include_tasks: conjurCLI.yml
+- debug: msg="{{ lookup('pipe','date +%H:%M:%S') }}"
+- include_tasks: conjurClusterEnrollMaster.yml
+- debug: msg="{{ lookup('pipe','date +%H:%M:%S') }}"
+- include_tasks: conjurConfigStandbys.yml
+- debug: msg="{{ lookup('pipe','date +%H:%M:%S') }}"
+- include_tasks: conjurClusterEnrollStandbys.yml
+#- debug: msg="{{ lookup('pipe','date +%H:%M:%S') }}"
+#- include_tasks: conjurInitialize.yml
+- name: End Conjur installation
+  debug: msg="{{ lookup('pipe','date +%H:%M:%S') }}"

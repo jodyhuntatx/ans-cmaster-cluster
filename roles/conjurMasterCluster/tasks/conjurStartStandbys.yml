@@ -1,0 +1,27 @@
+--- # Tasks for starting Conjur standby nodes
+
+- name: Start Conjur standby1
+  docker_container:
+    name: "{{ conjur_standby1_container_name }}"
+    image: conjur-appliance:latest
+    state: started
+    privileged: yes
+    recreate: yes
+    labels: 
+     role: "conjur_node"
+    volumes:
+     - "{{ conjur_audit_volume }}:{{ conjur_audit_directory }}"
+    restart_policy: unless-stopped
+
+- name: Start Conjur standby2
+  docker_container:
+    name: "{{ conjur_standby2_container_name }}"
+    image: conjur-appliance:latest
+    state: started
+    privileged: yes
+    recreate: yes
+    labels: 
+     role: "conjur_node"
+    volumes:
+     - "{{ conjur_audit_volume }}:{{ conjur_audit_directory }}"
+    restart_policy: unless-stopped

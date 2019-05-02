@@ -1,0 +1,22 @@
+---
+
+- name: Load policies
+  shell: |
+    docker exec {{ conjur_cli_container_name }} bash -c "conjur policy load root /policy/users.yml > /identity/personas"
+
+- name: Set user login passwords and set eva as the logged in user
+  shell: |
+    docker exec {{ conjur_cli_container_name }} conjur authn logout
+    docker exec {{ conjur_cli_container_name }} cat /identity/personas | jq -r .created_roles.\"{{ conjur_account }}:user:{{ item }}\".api_key > {{ item }}.api_key
+    docker exec {{ conjur_cli_container_name }} conjur authn login -u {{ item }} -p $(cat {{ item }}.api_key)
+    docker exec {{ conjur_cli_container_name }} conjur user update_password -p {{ conjur_admin_password }}
+    rm -f {{ item }}.api_key
+  with_items:
+    - bob
+    - carol
+    - ted
+    - alice
+    - "{{ conjur_devops_admin_account }}"
+
+- name: Delete persona info
+  shell: docker exec {{ conjur_cli_container_name }} rm /identity/personas

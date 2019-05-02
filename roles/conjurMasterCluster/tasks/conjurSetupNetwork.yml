@@ -1,0 +1,11 @@
+---
+- name: create network for master/standby cluster
+  docker_network:
+    name: "{{ conjur_network_name }}"
+    connected:
+      - conjur2
+      - conjur3
+    appends: yes
+
+- name: add alias for conjur1 as current master
+  shell: docker network connect --alias {{ conjur_master_alias }} {{ conjur_network_name }} conjur1

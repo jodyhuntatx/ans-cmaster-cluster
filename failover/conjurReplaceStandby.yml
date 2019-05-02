@@ -1,0 +1,177 @@
+---
+# conjur_failed_container_name is passed from command line as --extra-vars
+
+- hosts: conjurMaster
+  gather_facts: false
+  tasks:
+  - name: Find master
+    shell: |
+      cont_list=$(docker ps -f "label=role=conjur_node" \
+                                    --format "{{ '{{' }}.Names {{ '}}' }}")
+      for i in $cont_list; do
+        if [[ $(docker exec $i curl -sk http://localhost/health \
+                                 | jq -Mr .cluster.ok) == "true" ]]; then
+          if [[ $(docker exec $i evoke role) == master ]]; then
+            echo -n $i
+            exit 0
+          fi
+        fi
+      done
+    register: output
+
+  - set_fact:
+      current_master: "{{ output.stdout }}"
+  - debug: msg="Current master - {{ current_master }}"
+
+  - name: Find current etcd follower
+    shell: |
+      cont_list=$(docker ps -f "label=role=conjur_node" \
+                                    --format "{{ '{{' }}.Names {{ '}}' }}")
+      for i in $cont_list; do
+        followers=$(docker exec -it $i etcdctl member list | grep isLeader=false | awk '{ print $2 }' | cut -d = -f 2)
+        for f in $followers; do
+          if [[ $f != {{ conjur_failed_container_name }} ]]; then
+            echo -n "$f"
+            exit 0
+          fi
+        done
+      done
+    register: output
+
+  - set_fact:
+      current_etcd_follower: "{{ output.stdout }}"
+  - debug: msg="Current etcd follower - {{ current_etcd_follower }}"
+
+  - name: Timestamp
+    debug:
+      msg:
+        - "{{ lookup('pipe','date +%H:%M:%S') }}"
+        - "Failed node - {{ conjur_failed_container_name }}"
+        - "Current master - {{ current_master }}"
+        - "Current etcd follower - {{ current_etcd_follower }}"
+
+  - name: Delete failed node
+    docker_container:
+      name: "{{ conjur_failed_container_name }}"
+      state: absent
+
+  - name: Pause cluster
+    shell: |
+      if [[ {{item}} != {{ conjur_failed_container_name }} ]]; then
+        docker pause {{ item }}
+      fi
+    with_items:
+    - conjur1
+    - conjur2
+    - conjur3
+
+  - name: Update master network alias to new master
+    shell: |
+      docker network disconnect {{ conjur_network_name }} {{ current_master }}
+      docker network connect --alias {{ conjur_master_alias }} {{ conjur_network_name }} {{ current_master }}
+
+  - name: Unpause cluster
+    shell: |
+      if [[ {{item}} != {{ conjur_failed_container_name }} ]]; then
+        docker unpause {{ item }}
+      fi
+    with_items:
+    - conjur1
+    - conjur2
+    - conjur3
+
+  - name: Wait until master is responsive
+    shell: |
+      while [[ "$master_is_healthy" == "" ]]; do \
+        sleep 2
+        master_is_healthy=$(curl -k https://localhost/health | grep "ok" | tail -1 | grep "true")
+      done
+
+  - name: Start new standby container
+    docker_container:
+      name: "{{ conjur_failed_container_name }}"
+      image: conjur-appliance:latest
+      state: started
+      privileged: yes
+      recreate: yes
+      labels: 
+       role: "conjur_node"
+      networks:
+       - name: "{{ conjur_network_name }}"
+      volumes:
+       - "{{ conjur_audit_volume }}:{{ conjur_audit_directory }}"
+      restart_policy: always
+
+  - name: Transfer seed info to new standby
+    shell: |
+      docker exec {{ current_master }} evoke seed standby {{ conjur_failed_container_name }} | \
+        docker exec -i {{ conjur_failed_container_name }} evoke unpack seed - 
+
+  - name: Configure new standby
+    shell: |
+      docker exec {{ conjur_failed_container_name }} evoke configure standby
+
+  - name: Wait until master is responsive
+    shell: |
+      while [[ "$master_is_healthy" == "" ]]; do \
+        sleep 2
+        master_is_healthy=$(curl -k https://localhost/health | grep "ok" | tail -1 | grep "true")
+      done
+
+  - name: Remove failed node entry from etcd member list 
+    shell: |
+      docker exec {{ current_etcd_follower }} evoke cluster member remove {{ conjur_failed_container_name }}
+
+  - name: Update etcd follower member list with new standby entry
+    shell: |
+      docker exec {{ current_etcd_follower }} evoke cluster member add {{ conjur_failed_container_name }}
+
+  - name: Wait until master is responsive
+    shell: |
+      while [[ "$master_is_healthy" == "" ]]; do \
+        sleep 2
+        master_is_healthy=$(curl -k https://localhost/health | grep "ok" | tail -1 | grep "true")
+      done
+
+  - name: Start synchronous replication
+    shell: |
+      docker exec {{ current_master }} evoke replication sync
+
+  - name: Re-enroll new standby in cluster
+    shell: |
+      docker exec -it {{ conjur_failed_container_name }} evoke cluster enroll --reenroll --cluster-machine-name {{ conjur_failed_container_name }} conjur-cluster
+  - name: Check cluster
+    script: check_cluster.sh
+    register: output
+  - debug: var=output.stdout_lines
+
+  - name: Timestamp
+    debug: 
+      msg:
+       - "{{ lookup('pipe','date +%H:%M:%S') }}"
+       - "Standby replacement completed"
+       - "Waiting for replication lag to be zero..."
+
+  - name: Waiting until replication lag is zero for all standbys
+    script: check_replication.sh
+    register: output
+    until: output.stdout == ""
+    retries: 120 
+    delay: 30
+    ignore_errors: yes
+
+  - name: Timestamp
+    debug:
+      msg:
+        - "{{ lookup('pipe','date +%H:%M:%S') }}"
+        - "Replication lag is zero for all standbys."
+
+  - name: Check cluster
+    script: check_cluster.sh
+    register: output
+  - debug: var=output.stdout_lines
+
+  - name: Show new master & etcd cluster info
+    script: find_master.sh
+    register: output
+  - debug: var=output.stdout_lines

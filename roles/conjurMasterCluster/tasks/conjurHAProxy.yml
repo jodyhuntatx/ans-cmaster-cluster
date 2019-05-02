@@ -1,0 +1,35 @@
+--- # Tasks for starting HAProxy health-checking load balancer for cluster
+
+- name: Copy HA proxy tarfile to target
+  copy:
+    src: "{{ conjur_tarfile_dir }}/{{ conjur_haproxy_tarfile }}"
+    dest: /tmp/{{ conjur_haproxy_tarfile }}
+
+- name: Load HAProxy
+  docker_image:
+    name: "{{ conjur_haproxy_image_name }}"
+    load_path: /tmp/{{ conjur_haproxy_tarfile }}
+    state: present
+    force: yes
+
+#- name: Delete tarfile on target
+#  file:
+#    path: /tmp/{{ conjur_haproxy_tarfile }}
+#    state: absent
+
+- name: Start HAProxy
+  docker_container:
+    name: "{{ conjur_haproxy_container_name }}"
+    image: "{{ conjur_haproxy_image_name }}"
+    state: started
+    privileged: yes
+    recreate: yes
+    entrypoint: "/start.sh"
+    networks:
+     - name: "{{ conjur_network_name }}"
+    published_ports:
+     - "{{ conjur_https_port }}:443"
+     - "{{ conjur_pgsql_port }}:5432"
+     - "{{ conjur_pgaudit_port }}:1999"
+    restart_policy: always
+

@@ -1,0 +1,52 @@
+---
+- hosts: all
+  become: False
+  gather_facts: False
+  connection: local
+  vars:
+    host_key_checking: False
+  tasks:
+  - name: Get hostkeys of inventory hostnames and IPs
+    shell: "ssh-keyscan {{ inventory_hostname }},{{ ansible_host }}"
+    register: hostkey_name
+
+  - name: Write hostname hostkeys to known_hosts
+    lineinfile:
+      dest: ~/.ssh/known_hosts
+      line: "{{hostkey_name.stdout}}"
+
+- hosts: all
+  become: True
+  gather_facts: False
+  tasks:
+  - name: install python 2
+    raw: test -e /usr/bin/python || (apt -y update && apt install -y python-minimal)
+
+- hosts: all
+  become: True
+  tasks:
+  - name: setup SSH key
+    authorized_key:
+      user: "{{ ansible_user }}"
+      state: present
+      key: '{{ item }}'
+    with_file:
+      - "{{ ssh_pub_key_file }}"
+
+  - name: setup passwordless sudo for sudo group
+    lineinfile:
+      path: /etc/sudoers
+      state: present
+      regexp: '^%wheel'
+      line: '%wheel ALL=(ALL) NOPASSWD: ALL'
+      validate: 'visudo -cf %s'
+    when: ansible_os_family == 'RedHat'
+
+  - name: setup passwordless sudo for sudo group
+    lineinfile:
+      path: /etc/sudoers
+      state: present
+      regexp: '^%sudo'
+      line: '%sudo ALL=(ALL) NOPASSWD: ALL'
+      validate: 'visudo -cf %s'
+    when: ansible_os_family == 'Debian'

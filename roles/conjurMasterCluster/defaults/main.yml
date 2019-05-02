@@ -1,0 +1,33 @@
+---
+# defaults file for conjurMaster
+
+# conjur appliance defaults
+conjur_version: '5'
+conjur_account: 'cyberark'
+conjur_admin_password: 'Cyberark1'
+conjur_EE_image_name: 'conjur-appliance:latest'
+conjur_master_altnames: "localhost,{{ conjur_master_hostname }}"
+conjur_cluster_name: 'conjur-cluster'
+conjur_master_container_name: 'conjur1'
+conjur_standby1_container_name: 'conjur2'
+conjur_standby2_container_name: 'conjur3'
+conjur_audit_volume: "audit"
+conjur_audit_directory: '/var/log/conjur'
+conjur_https_port: '443'
+conjur_pgsql_port: '5432'
+conjur_pgaudit_port: '1999'
+conjur_network_name: 'conjur_master_network'
+conjur_master_hostname: 'conjur_master'
+conjur_master_alias: "{{ conjur_master_hostname }}"
+
+# haproxy defaults 
+# the haproxy network identity is the ostensible "conjur master"
+conjur_haproxy_image_name: 'haproxy:latest'
+conjur_haproxy_container_name: 'haproxy'
+conjur_master_host_ip: '192.168.2.143'
+conjur_external_url: "https://{{ conjur_master_hostname }}"
+
+# conjur CLI defaults
+conjur_cli_image_name: 'cyberark/conjur-cli:5-latest'
+conjur_cli_container_name: 'conjur-cli'
+conjur_devops_admin_account: "eva"

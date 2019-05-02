@@ -1,0 +1,43 @@
+---
+- name: Install apt packages
+  apt:
+    name: "{{ packages }}"
+    state: latest
+    update_cache: yes
+  vars:
+    packages:
+     - apt-transport-https
+     - python-apt
+     - ca-certificates
+     - curl
+     - software-properties-common
+
+# adding the word 'universe' to the end of all lines in source.list
+# allows installation of pip
+- name: add universe category to bionic repo source lines
+  shell: |
+    cd /etc/apt
+    cp sources.list sources.list.bak
+    rm sources.list
+    touch sources.list
+    cat sources.list.bak | awk '{f=0};/main$/ { print $0 " universe";x=1 };f==0{print $0}' >> sources.list
+  when: ansible_distribution_release == "bionic"
+
+- name: install Ansible Dependencies 
+  apt:
+    name: "{{ packages }}"
+    state: latest
+    update_cache: yes
+  vars:
+    packages:
+      - python-pip
+      - python3-pip
+      - python-jmespath 
+
+# apparently jq has no presence in apt repos
+- name: install jq
+  get_url:
+    url: https://github.com/stedolan/jq/releases/download/jq-1.6/jq-linux64
+    dest: /usr/bin/jq
+    mode: 0555
+

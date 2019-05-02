@@ -1,0 +1,4 @@
+---
+rhel_sub_account: "{{ lookup('env', 'RHEL_SUB_ACCOUNT') }}"
+rhel_sub_password: "{{ lookup('env', 'RHEL_SUB_PASSWORD') }}"
+rhel_sub_pool_id: "{{ lookup('env', 'RHEL_SUB_POOL_ID') }}"

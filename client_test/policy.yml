@@ -1,0 +1,9 @@
+---
+- !policy
+  id: secrets
+  body:
+    - !variable db_username
+    - !variable db_password
+
+- !host
+  id: Sync_CVS1

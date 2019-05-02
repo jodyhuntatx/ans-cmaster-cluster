@@ -1,0 +1,27 @@
+[all:vars]
+# these values tend to change with inventory and deployments
+ansible_user=demo
+ssh_pub_key_file=~/.ssh/id_oshift.pub
+ansible_ssh_private_key_file=~/.ssh/id_oshift
+conjur_tarfile_dir=~/conjur-install-images
+conjur_appliance_version=5.2.6
+conjur_appliance_tarfile=conjur-appliance-{{conjur_appliance_version}}.tar
+conjur_haproxy_tarfile=haproxy-1.8.tar
+conjur_cli_tarfile=conjur-cli-5-latest.tar
+
+# these values control playbook execution for initialization and cleanup
+initialize_rh_subscriptions=false
+machine_prep=false
+docker_config=false
+delete_appliance_image_on_host=false
+delete_appliance_tarfile_on_host=false
+
+# these values are Conjur config parameters needed by non-role playbooks
+conjur_network_name=conjur_master_network
+conjur_master_alias=conjur_master
+conjur_audit_volume=audit
+conjur_audit_directory=/var/log/conjur
+
+[conjurMaster]
+#default ansible_connection=ssh
+frbkctest

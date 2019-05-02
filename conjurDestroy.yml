@@ -1,0 +1,23 @@
+---
+- name: Delete all cluster nodes
+  docker_container:
+    name: "{{ item }}"
+    state: absent
+  with_items:
+    - haproxy
+    - conjur1
+    - conjur2
+    - conjur3
+    - conjur-cli
+  ignore_errors: yes
+
+- name: Prune docker system
+  shell: docker system prune -f
+
+- name: Delete appliance tarfile 
+  command: rm -f /tmp/conjur-appliance*.tar
+  when: delete_appliance_tarfile_on_host
+
+- name: Delete Conjur appliance image and tag
+  shell: docker rmi $(docker images conjur-appliance -q)
+  when: delete_appliance_image_on_host

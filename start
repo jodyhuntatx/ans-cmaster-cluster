@@ -1,0 +1,4 @@
+#!/bin/bash
+docker build -t ansible .
+docker run -d --name ansible -v ~:/src ansible sleep infinity
+docker exec -it ansible bash

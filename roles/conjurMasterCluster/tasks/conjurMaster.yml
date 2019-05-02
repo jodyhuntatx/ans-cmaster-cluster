@@ -1,0 +1,48 @@
+--- # Tasks for starting & configuring Conjur Master node
+- name: create volume for audit data
+  docker_volume:
+    name: "{{ item }}"
+    state: present
+  with_items:
+   - "{{ conjur_audit_volume }}"
+
+- name: Copy tarfile to target - this takes several minutes
+  copy:
+    src: "{{ conjur_tarfile_dir }}/{{ conjur_appliance_tarfile }}"
+    dest: /tmp
+
+- name: Load Conjur appliance image from tarfile
+  docker_image:
+    name: "{{ conjur_EE_image_name }}"
+    load_path: /tmp/{{ conjur_appliance_tarfile }}
+    state: present
+    timeout: 120
+
+- name: Get ID of Conjur image
+  shell: echo $(docker images | grep conjur-appliance | awk '{print $3}')
+  register: conjur_image_id
+
+- name: Tag conjur-appliance image as 'latest'
+  shell: docker tag {{ conjur_image_id }} conjur-appliance:latest
+
+- name: Start Conjur master
+  docker_container:
+    name: "{{ conjur_master_container_name }}"
+    image: conjur-appliance:latest
+    state: started
+    privileged: yes
+    recreate: yes
+    labels: 
+     role: "conjur_node"
+    volumes:
+     - "{{ conjur_audit_volume }}:{{ conjur_audit_directory }}"
+    restart_policy: unless-stopped
+
+- name: Configure Conjur master
+  shell: |
+    docker exec {{ conjur_master_container_name }} \
+         evoke configure master \
+                     -h {{ conjur_master_alias }} \
+                     --master-altnames "{{conjur_master_container_name}},{{conjur_standby1_container_name}},{{conjur_standby2_container_name}}" \
+                     -p {{ conjur_admin_password }} \
+                     {{ conjur_account }} 

@@ -1,0 +1,19 @@
+---
+# current_master, pause_seconds passed from command line as extra vars
+- hosts: conjurMaster
+  gather_facts: false
+  vars:
+    conjur_network: "conjur_master_network"
+  tasks:
+  - name: Timestamp
+    debug: msg="{{ lookup('pipe','date +%H:%M:%S') }}"
+
+  - name: Check cluster
+    script: check_cluster.sh
+    register: output
+  - debug: var=output.stdout_lines
+
+  - name: Find new master & cluster leader
+    script: find_master.sh
+    register: output
+  - debug: var=output.stdout_lines

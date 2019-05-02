@@ -1,0 +1,18 @@
+---
+- name: Clean out RH subscription info
+  shell: |
+    subscription-manager unregister
+    subscription-manager clean
+
+- name: Host registration & repo configuration
+  shell: |
+    subscription-manager register --username="{{ rhel_sub_account }}" --password="{{ rhel_sub_password }}"
+    subscription-manager attach
+    subscription-manager refresh
+    subscription-manager repos --disable="*" > /dev/null
+    yum-config-manager --disable \* > /dev/null
+    subscription-manager attach --pool={{ rhel_sub_pool_id }}
+    subscription-manager repos \
+      --enable="rhel-7-server-rpms" \
+      --enable="rhel-7-server-extras-rpms" \
+      --enable="rhel-7-server-ansible-2.4-rpms"
